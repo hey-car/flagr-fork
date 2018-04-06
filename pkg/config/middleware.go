@@ -3,6 +3,7 @@ package config
 import (
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,7 +103,11 @@ func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, nex
 	start := time.Now()
 
 	next(w, r)
+	response := w.(negroni.ResponseWriter)
+	duration := time.Since(start)
+	status := strconv.Itoa(response.Status())
 
 	s.StatsdClient.Incr("http.requests.count", 1)
-	s.StatsdClient.PrecisionTiming("http.requests.duration", time.Since(start))
+	s.StatsdClient.Incr("http.requests."+status+".count", 1)
+	s.StatsdClient.PrecisionTiming("http.requests.duration", duration)
 }
