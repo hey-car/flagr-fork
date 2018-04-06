@@ -8,12 +8,14 @@ import (
 	"github.com/evalphobia/logrus_sentry"
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
+	"github.com/quipo/statsd"
 	"github.com/sirupsen/logrus"
 )
 
 // Global is the global dependency we can use, such as the new relic app instance
 var Global = struct {
-	NewrelicApp newrelic.Application
+	NewrelicApp  newrelic.Application
+	StatsdClient *statsd.StatsdClient
 }{}
 
 func init() {
@@ -21,6 +23,7 @@ func init() {
 
 	setupSentry()
 	setupLogrus()
+	setupStatsd()
 	setupNewrelic()
 }
 
@@ -42,6 +45,18 @@ func setupSentry() {
 			return
 		}
 		logrus.StandardLogger().Hooks.Add(hook)
+	}
+}
+
+func setupStatsd() {
+	if Config.StatsdEnabled {
+		client := statsd.NewStatsdClient(fmt.Sprintf("%s:%s", Config.StatsdHost, Config.StatsdPort), Config.StatsdPrefix)
+		err := client.CreateSocket()
+		if err != nil {
+			panic(fmt.Sprintf("unable to initialize statsd. %s", err))
+		}
+
+		Global.StatsdClient = client
 	}
 }
 

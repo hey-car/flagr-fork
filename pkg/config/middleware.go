@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gohttp/pprof"
 	negronilogrus "github.com/meatballhat/negroni-logrus"
+	"github.com/quipo/statsd"
 	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
@@ -26,6 +28,10 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 			AllowedHeaders: []string{"Content-Type", "Accepts"},
 			AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		}))
+	}
+
+	if Config.StatsdEnabled {
+		n.Use(&statsdMiddleware{StatsdClient: Global.StatsdClient})
 	}
 
 	if Config.NewRelicEnabled {
@@ -86,4 +92,17 @@ func (a *auth) ServeHTTP(w http.ResponseWriter, req *http.Request, next http.Han
 		}
 	}
 	a.JWTMiddleware.HandlerWithNext(w, req, next)
+}
+
+type statsdMiddleware struct {
+	StatsdClient *statsd.StatsdClient
+}
+
+func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	start := time.Now()
+
+	next(w, r)
+
+	s.StatsdClient.Incr("http.requests.count", 1)
+	s.StatsdClient.PrecisionTiming("http.requests.duration", time.Since(start))
 }
