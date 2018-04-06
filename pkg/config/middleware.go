@@ -100,14 +100,12 @@ type statsdMiddleware struct {
 }
 
 func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	start := time.Now()
+	defer func(start time.Time) {
+		response := w.(negroni.ResponseWriter)
+		status := strconv.Itoa(response.Status())
+		s.StatsdClient.Incr("http.requests."+status+".count", 1)
+		s.StatsdClient.PrecisionTiming("http.requests.duration", time.Since(start))
+	}(time.Now())
 
 	next(w, r)
-	response := w.(negroni.ResponseWriter)
-	duration := time.Since(start)
-	status := strconv.Itoa(response.Status())
-
-	s.StatsdClient.Incr("http.requests.count", 1)
-	s.StatsdClient.Incr("http.requests."+status+".count", 1)
-	s.StatsdClient.PrecisionTiming("http.requests.duration", duration)
 }
