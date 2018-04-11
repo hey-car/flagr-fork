@@ -104,9 +104,12 @@ func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, nex
 		response := w.(negroni.ResponseWriter)
 		status := strconv.Itoa(response.Status())
 		duration := float64(time.Since(start)) / float64(time.Millisecond)
+		tags := []string{
+			"status:" + status,
+		}
 
-		s.StatsdClient.Incr("http.requests."+status+".count", nil, 1)
-		s.StatsdClient.TimeInMilliseconds("http.requests.duration", duration, nil, 1)
+		s.StatsdClient.Incr("http.requests.count", tags, 1)
+		s.StatsdClient.TimeInMilliseconds("http.requests.duration", duration, tags, 1)
 	}(time.Now())
 
 	next(w, r)
