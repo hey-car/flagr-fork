@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/datadog-go/statsd"
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gohttp/pprof"
 	negronilogrus "github.com/meatballhat/negroni-logrus"
-	"github.com/quipo/statsd"
 	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
@@ -96,15 +96,17 @@ func (a *auth) ServeHTTP(w http.ResponseWriter, req *http.Request, next http.Han
 }
 
 type statsdMiddleware struct {
-	StatsdClient *statsd.StatsdClient
+	StatsdClient *statsd.Client
 }
 
 func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	defer func(start time.Time) {
 		response := w.(negroni.ResponseWriter)
 		status := strconv.Itoa(response.Status())
-		s.StatsdClient.Incr("http.requests."+status+".count", 1)
-		s.StatsdClient.PrecisionTiming("http.requests.duration", time.Since(start))
+		duration := float64(time.Since(start)) / float64(time.Millisecond)
+
+		s.StatsdClient.Incr("http.requests."+status+".count", nil, 1)
+		s.StatsdClient.TimeInMilliseconds("http.requests.duration", duration, nil, 1)
 	}(time.Now())
 
 	next(w, r)

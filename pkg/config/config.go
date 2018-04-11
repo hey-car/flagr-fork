@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/caarlos0/env"
 	"github.com/evalphobia/logrus_sentry"
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
-	"github.com/quipo/statsd"
 	"github.com/sirupsen/logrus"
 )
 
 // Global is the global dependency we can use, such as the new relic app instance
 var Global = struct {
 	NewrelicApp  newrelic.Application
-	StatsdClient *statsd.StatsdClient
+	StatsdClient *statsd.Client
 }{}
 
 func init() {
@@ -50,11 +50,11 @@ func setupSentry() {
 
 func setupStatsd() {
 	if Config.StatsdEnabled {
-		client := statsd.NewStatsdClient(fmt.Sprintf("%s:%s", Config.StatsdHost, Config.StatsdPort), Config.StatsdPrefix)
-		err := client.CreateSocket()
+		client, err := statsd.New(fmt.Sprintf("%s:%s", Config.StatsdHost, Config.StatsdPort))
 		if err != nil {
 			panic(fmt.Sprintf("unable to initialize statsd. %s", err))
 		}
+		client.Namespace = Config.StatsdPrefix
 
 		Global.StatsdClient = client
 	}
