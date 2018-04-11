@@ -106,6 +106,8 @@ func (s *statsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, nex
 		duration := float64(time.Since(start)) / float64(time.Millisecond)
 		tags := []string{
 			"status:" + status,
+			"path:" + r.RequestURI,
+			"method:" + r.Method,
 		}
 
 		s.StatsdClient.Incr("http.requests.count", tags, 1)
